@@ -1,78 +1,25 @@
-# React + TypeScript + Vite
+# Bus There
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Pick a start (or use GPS) and a destination in Singapore; the app finds the fastest bus trip
+(direct, or with one transfer at the same stop), shows the walk to the boarding stop, and the
+live arrival times of the bus you need.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm install
+npm run dev         # http://localhost:5173
+npm test            # planner unit tests
+npm run fetch-data  # refresh the bus network snapshot in public/data
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+## How it works
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Bus network** — `public/data/*.min.json` is a snapshot of [busrouter.sg](https://busrouter.sg)'s
+  static data (from [sgbusdata](https://github.com/cheeaun/sgbusdata)).
+- **Routing** (`src/lib/planner.ts`) — considers every stop within 400 m of start and end and ranks trips by
+  estimated total time: walk (1.4 m/s) + wait + ride (stop-to-stop distance at 18 km/h) + 5 min per transfer + walk.
+  The wait starts as an assumed 5 min and is replaced by the live arrival once fetched.
+- **Live arrivals** (`src/lib/arrivals.ts`) — [arrivelah](https://github.com/cheeaun/arrivelah), the CORS-enabled
+  LTA DataMall proxy busrouter.sg uses. It is a free hobby service; swap in your own proxy with a DataMall key if needed.
+- **Place search** (`src/lib/geocode.ts`) — OneMap, falling back to Photon (OpenStreetMap).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+Data © LTA · OneMap · © OpenStreetMap contributors. Non-commercial learning project.
