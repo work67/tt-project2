@@ -41,8 +41,23 @@ export function upcomingBuses(all: ServiceArrivals[], service: string, destinati
   return [entry.next, entry.subsequent, entry.next3].filter((a): a is Arrival => a != null)
 }
 
-export function minutesUntil(arrival: Arrival): number {
-  return Math.max(0, arrival.duration_ms / 60_000)
+/** Milliseconds from `now` until the bus arrives (negative once it has arrived). */
+export function msUntil(arrival: Arrival, now: number): number {
+  return Date.parse(arrival.time) - now
+}
+
+export function minutesUntil(arrival: Arrival, now: number): number {
+  return Math.max(0, msUntil(arrival, now) / 60_000)
+}
+
+/**
+ * The first bus you can still reach after walking `walkMin` to the stop, plus the one after it.
+ * `missed` counts earlier buses that leave before you could get there.
+ */
+export function catchableBuses(arrivals: Arrival[], walkMin: number, now: number) {
+  const index = arrivals.findIndex((a) => msUntil(a, now) >= walkMin * 60_000)
+  if (index === -1) return { bus: undefined, following: undefined, missed: arrivals.length }
+  return { bus: arrivals[index], following: arrivals[index + 1], missed: index }
 }
 
 export const LOAD_LABEL: Record<Load, string> = {

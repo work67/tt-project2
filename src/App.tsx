@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { PlaceSearch } from './components/PlaceSearch'
 import { TripCard } from './components/TripCard'
 import { TripMap } from './components/TripMap'
-import { fetchArrivals, MIN_POLL_MS, minutesUntil, upcomingBuses, type ServiceArrivals } from './lib/arrivals'
+import { catchableBuses, fetchArrivals, MIN_POLL_MS, minutesUntil, upcomingBuses, type ServiceArrivals } from './lib/arrivals'
 import { loadBusData, type BusData } from './lib/busData'
 import type { Place } from './lib/geocode'
 import { applyLiveWaits, planTrips, walkingOnlyMinutes, type Trip } from './lib/planner'
+import { useNow } from './lib/useNow'
 import './App.css'
 
 const POLL_MS = Math.max(MIN_POLL_MS, 30_000)
@@ -21,6 +22,7 @@ function App() {
   const [to, setTo] = useState<Place | null>(null)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [arrivals, setArrivals] = useState<Record<string, StopArrivals>>({})
+  const now = useNow()
 
   useEffect(() => {
     loadBusData()
@@ -58,12 +60,12 @@ function App() {
     return services && upcomingBuses(services, leg.service, leg.pattern.destination)
   }
 
-  const trips = applyLiveWaits(planned, (_stop, leg) => {
+  const trips = applyLiveWaits(planned, (_stop, leg, walkMin) => {
     const services = arrivals[leg.board.code]?.services
     if (!services) return undefined
-    const [next] = upcomingBuses(services, leg.service, leg.pattern.destination)
-    // No upcoming bus listed means the service is not running now; push it down the list.
-    return next ? minutesUntil(next) : 999
+    const { bus } = catchableBuses(upcomingBuses(services, leg.service, leg.pattern.destination), walkMin, now)
+    // No catchable bus listed means it is not worth waiting for; push it down the list.
+    return bus ? minutesUntil(bus, now) - walkMin : 999
   })
   const selected = trips.find((t) => tripKey(t) === selectedKey) ?? trips[0]
   const walkMin = from && to ? walkingOnlyMinutes(from, to) : Infinity
@@ -98,6 +100,7 @@ function App() {
                     onSelect={() => setSelectedKey(tripKey(trip))}
                     arrivals={busesFor(trip)}
                     arrivalsError={arrivals[trip.legs[0].board.code]?.error}
+                    now={now}
                   />
                 ))}
               </ul>

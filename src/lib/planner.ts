@@ -28,8 +28,8 @@ export type Trip = {
   totalMin: number
 }
 
-/** Look up how many minutes until `service` reaches `stop`, or undefined if unknown. */
-export type WaitLookup = (stopCode: string, leg: Leg) => number | undefined
+/** Minutes spent waiting at the stop after a `walkMin` walk to it, or undefined if unknown. */
+export type WaitLookup = (stopCode: string, leg: Leg, walkMin: number) => number | undefined
 
 type Access = Map<string, number> // stop code -> walk minutes
 
@@ -140,7 +140,7 @@ export function planTrips(data: BusData, from: LatLng, to: LatLng, limit = 6): T
 /** Re-score trips with live waits for the first bus, then re-sort. */
 export function applyLiveWaits(trips: Trip[], lookup: WaitLookup): Trip[] {
   return trips
-    .map((trip) => withWait(trip, lookup(trip.legs[0].board.code, trip.legs[0])))
+    .map((trip) => withWait(trip, lookup(trip.legs[0].board.code, trip.legs[0], trip.walkToBoardMin)))
     .sort((a, b) => a.totalMin - b.totalMin)
 }
 
